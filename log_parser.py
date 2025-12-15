@@ -10,7 +10,24 @@ SUSPICIOUS_RULES = {
     'cron_job_edit': r'CRON.*(pam_unix|session)',
 }
 
-def parse_log():
+def parse_linux_log(log_files):
+    incidents = []
+    with open(log_files, 'r') as f:
+        for line in f:
+            for rule_name, pattern in SUSPICIOUS_RULES.items():
+                match = re.search(pattern, line)
+                if match:
+                    incident = {
+                        'timetamp': parser.parse(line.split()[0]) + line.split()[1],
+                        'rule_name': rule_name,
+                        'log_entry': line.strip()
+                    }
+                    incidents.append(incident)
+    
+    return incidents
+
+def parse_windows_log():
+
 
 
 def analyze_log():
