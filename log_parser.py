@@ -3,6 +3,12 @@ from datetime import datetime
 from dateutil import parser
 import os
 
+try:
+    import Evtx.Evx as evtx
+    EVTX_AVAILABLE = True
+except ImportError:
+    EVTX_AVAILABLE = False
+
 SUSPICIOUS_RULES = {
     # Linux patterns
     'failed_login': r'authentication failure|Failed password',
@@ -53,18 +59,28 @@ WINDOWS_EVENT_IDS = {
 
 def parse_linux_log(log_files):
     incidents = []
-    with open(log_files, 'r') as f:
+    if not os.path.exists(log_file):
+        print(f"Error: File '{log_file}' not found")
+        return incidents
+    with open(log_files, 'r', encoding='utf-8', errors='ignore') as f:
         for line in f:
             for rule_name, pattern in SUSPICIOUS_RULES.items():
-                match = re.search(pattern, line)
-                if match:
-                    incident = {
-                        'timestamp': parser.parse(line.split()[0]) + line.split()[1],
-                        'rule_name': rule_name,
-                        'log_entry': line.strip()
-                    }
-                    incidents.append(incident)
-    
+                if re.search(pattern, line, re.IGNORECASE):
+                    try:
+                        parts = line.split()
+                        timestamp_str = ' '.join(parts[:3])
+                        timestamp = parser.parse(timestamp_str, fuzzy=True)
+                        timestamp = timestamp.replace(year=datetime.now().year)
+                    except:
+                        timestamp = datetime.now
+                incident = {
+                    'timestamp': timestamp,
+                    'rule_name': rule_name,
+                    'log_entry': line.strip()
+                }
+                incidents.append(incident)
+                break
+
     return incidents
 
 def parse_windows_log():
